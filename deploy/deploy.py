@@ -7,7 +7,7 @@ import paramiko
 ec2_resource = boto3.resource('ec2', region_name='us-east-1')
 ec2_client = boto3.client('ec2')
 
-with open('init.sh', 'r') as f:
+with open('userdata.sh', 'r') as f:
     user_data_script = f.read()
 
 # Create the instance
@@ -62,6 +62,8 @@ ec2_client.associate_address(
 )
 print("EIP associated")
 
+
+'''
 def wait_for_ssh(host, port=22, timeout=300):
     
     start = time.time()
@@ -102,3 +104,4 @@ finally:
 
 
 print("DONE")
+'''
