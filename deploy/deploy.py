@@ -63,15 +63,15 @@ ec2_client.associate_address(
 print("EIP associated")
 
 
-'''
 def wait_for_ssh(host, port=22, timeout=300):
-    
+
     start = time.time()
     while time.time() - start < timeout:
         try:
             with socket.create_connection((host, port), timeout=5):
                 return True
-        except OSError:
+        except OSError as e:
+            print(f"Error: {e}")
             time.sleep(5)
     raise TimeoutError("SSH did not become available in time.")
 
@@ -90,18 +90,24 @@ ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 print("Connecting with ssh client")
 ssh.connect(instance.public_dns_name, username="ubuntu", pkey=key)
 
-print("Streaming /var/log/cloud-init-output.log:")
-stdin, stdout, stderr = ssh.exec_command('tail -n +1 -f /var/log/cloud-init-output.log')
+print("Running full startup script...")
+stdin, stdout, stderr = ssh.exec_command('source ./dolphin_capture/deploy/init.ssh')
 
-try:
-    for line in iter(stdout.readline, ""):
-        print(line, end='')
-except KeyboardInterrupt:
-    print("Stopped streaming.")
-finally:
-    ssh.close()
+# Stream stdout in real-time
+while not stdout.channel.exit_status_ready():
+    if stdout.channel.recv_ready():
+        output = stdout.channel.recv(1024).decode('utf-8')
+        print(output, end='')
 
+    time.sleep(0.1)  # Avoid tight loop
 
+# Optionally capture final exit status and stderr
+exit_status = stdout.channel.recv_exit_status()
+if exit_status != 0:
+    error_output = stderr.read().decode()
+    print("Error:", error_output)
+
+print(f"\nCommand exited with status {exit_status}")
+ssh.close()
 
 print("DONE")
-'''
